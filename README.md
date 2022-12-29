@@ -2,37 +2,18 @@ Experimental Repository for
 Single-use Function Decryption Key for the PALISADE Library
 =====================================
 
-PALISADE is a general lattice cryptography library that currently
-includes efficient implementations of the following lattice
-cryptography capabilities:
-	
-* Fully Homomorphic Encryption (FHE)
-   * Brakerski/Fan-Vercauteren (BFV) scheme for integer arithmetic
-   * Brakerski-Gentry-Vaikuntanathan (BGV) scheme for integer arithmetic
-   * Cheon-Kim-Kim-Song (CKKS) scheme for real-number arithmetic
-   * Ducas-Micciancio (FHEW) and Chillotti-Gama-Georgieva-Izabachene (TFHE) schemes for Boolean circuit evaluation
-* Multi-Party Extensions of FHE (to support multi-key FHE)
-   * Threshold FHE for BGV, BFV, and CKKS schemes
-   * Proxy Re-Encryption for BGV, BFV, and CKKS schemes
-   	
-Users should build and install PALISADE on their system. The include and library files are not included in this repostiory.
+This library extends BFVrns from PALISADE
 
-PALISADE is a cross-platform C++11 library supporting Linux, Windows, and macOS. The supported compilers are g++ v6.1 or later and clang++ v6.0 or later.
+It adds two primitives
+  * One-Time-Key Decryption
+  * Private Set Membership Test
+  
+Check example
+  * src/examples/simple-integers.cpp
 
-PALISADE is available under the BSD 2-clause license.
+Run Benchmark
+  * benchmark/src/lib-benchmark
 
-
-Further information about PALISADE:
-
-[License Information](License.md)
-
-[Library Wiki with documentation](https://gitlab.com/palisade/palisade-development/wikis/home)
-
-[Code of Conduct](Code-of-conduct.md)
-
-[Governance](Governance.md)
-
-[Contributing to PALISADE](Contributing.md)
 
 
 Build Instructions
@@ -111,39 +92,3 @@ To remove the files built by make, you can execute
 ```
 make clean
 ```
-
-Supported Operating Systems
---------------------------
-PALISADE CI continually tests our builds on the following operating systems:
-
-* Ubuntu [18.04]
-* macOS [Mojave]
-* Centos 7
-* NVIDIA Xavier [Linux for Tegra 4.2.2]
-* MinGW (64-bit) on Windows 10
-
-PALISADE users have reported successful operation on the following systems:
-
-* FreeBSD
-* Ubuntu [16.04]
-
-Please let us know the results if you have run PALISADE any additional systems not listed above.
-
-### Windows
-
-PALISADE extensions are encapsulated in independent repositories and are therefore installed in unique paths. The following snippet gives an example of how to include the extensions when using MinGW:
-
-```bash
-palisadeLibs=(
-    '/c/Program Files (x86)/PALISADE/lib' 
-    '/c/Program Files (x86)/PALISADEabe/lib' 
-    '/c/Program Files (x86)/PALISADEsignature/lib' 
-    '/c/Program Files (x86)/PALISADEtrapdoor/lib')
-
-for ((i=0; i < ${#palisadeLibs[*]}; i++))
-do
-    lib=${palisadeLibs[$i]}
-    PATH="${PATH}:${lib}"
-done
-```
-**Note** This can be pasted into `.bashrc`, `.profile`, etc. to make it perminent.
