@@ -1,0 +1,7 @@
+# Hashes of file build rules.
+3f48c5bb2e698dba96677c0490ee38c2 benchmark/CMakeFiles/benchmarkinfo
+1f28ec1164784b8f5061109c536c970c benchmark/benchmarkinfocmd
+71b0b4ae30ea13802da511671e393057 src/sfdk/CMakeFiles/sfdkinfo
+71b0b4ae30ea13802da511671e393057 src/sfdk/CMakeFiles/testsfdk
+d45aa1bc2e1ae3e23b02e02053156784 src/sfdk/runsfdktests
+db380a2d8301c96a0e27e53717c9f9fd src/sfdk/sfdkinfocmd

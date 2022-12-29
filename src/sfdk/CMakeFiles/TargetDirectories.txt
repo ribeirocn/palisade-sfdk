@@ -1,0 +1,10 @@
+/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk/src/sfdk/CMakeFiles/sfdkobj.dir
+/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk/src/sfdk/CMakeFiles/PALISADEsfdk.dir
+/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk/src/sfdk/CMakeFiles/allsfdk.dir
+/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk/src/sfdk/CMakeFiles/sfdkinfo.dir
+/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk/src/sfdk/CMakeFiles/edit_cache.dir
+/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk/src/sfdk/CMakeFiles/rebuild_cache.dir
+/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk/src/sfdk/CMakeFiles/list_install_components.dir
+/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk/src/sfdk/CMakeFiles/install.dir
+/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk/src/sfdk/CMakeFiles/install/local.dir
+/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk/src/sfdk/CMakeFiles/install/strip.dir

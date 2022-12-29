@@ -1,0 +1,3 @@
+# Hashes of file build rules.
+71b0b4ae30ea13802da511671e393057 CMakeFiles/sfdkinfo
+db380a2d8301c96a0e27e53717c9f9fd sfdkinfocmd

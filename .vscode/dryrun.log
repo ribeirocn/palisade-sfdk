@@ -1,0 +1,6 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory `/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk'
+make: Leaving directory `/Users/carlosribeiro/Library/CloudStorage/OneDrive-UniversidadedeLisboa/VisualCode/palisade-sfdk'
+ 
+Makefile:1: *** missing separator.  Stop.
+

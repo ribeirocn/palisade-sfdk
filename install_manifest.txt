@@ -1,0 +1,13 @@
+/usr/local/lib/PALISADEsfdk/PALISADEsfdkConfig.cmake
+/usr/local/lib/PALISADEsfdk/PALISADEsfdkConfigVersion.cmake
+/usr/local/lib/PALISADEsfdk/PALISADEsfdkTargets.cmake
+/usr/local/lib/PALISADEsfdk/PALISADEsfdkTargets-noconfig.cmake
+/usr/local/lib/libPALISADEsfdk.0.1.0.dylib
+/usr/local/lib/libPALISADEsfdk.0.dylib
+/usr/local/lib/libPALISADEsfdk.dylib
+/usr/local/include/palisade-sfdk/scheme/bfvrns-sfdk/bfvrns-sfdk.h
+/usr/local/include/palisade-sfdk/scheme/bfvrns-sfdk/bfvrns-ser-sfdk.h
+/usr/local/include/palisade-sfdk/utils.h
+/usr/local/include/palisade-sfdk/.DS_Store
+/usr/local/include/palisade-sfdk/pubkeylp-sfdk.h
+/usr/local/include/palisade-sfdk/cryptocontext-sfdk.h
