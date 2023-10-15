@@ -59,6 +59,11 @@ successfully, please review the error CMake shows at the end. If the
 error does not go away (even though you installed the dependency), try
 running "make clean" to clear the CMake cache.
 
+In MacOS you may need to use the followin cmake flags
+```
+cmake .. -DCMAKE_CROSSCOMPILING=1 -DRUN_HAVE_STD_REGEX=0 -DRUN_HAVE_POSIX_REGEX=0
+```
+
 * Build the executables by running the following command (this will take few minutes; using the -j make command-line flag is suggested to speed up the build)
 ```
 make
