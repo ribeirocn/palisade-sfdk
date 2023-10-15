@@ -88,6 +88,12 @@ Run sample code to test, e.g.,
 bin/examples/sfdk
 ```
 
+Run benchmark to test the performance on your computer
+```
+
+bin/benchmark/lib-benchmark
+```
+
 To remove the files built by make, you can execute
 ```
 make clean
