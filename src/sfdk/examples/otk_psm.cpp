@@ -117,6 +117,8 @@ void PSM_Test(CryptoContextSFDK<DCRTPoly> cryptoContext, LPKeyTupple<DCRTPoly> k
   Plaintext psmResult;
   cryptoContext->DecryptSfdk(result1, resultKey1, keyPair.publicKey, &psmResult);
   std::cout << "  PSM Result for first set: " << psmResult << std::endl;
+  auto error = cryptoContext->GetDecryptionError(keyPair.secretKey, result1);
+  std::cout << "Multiplication Decription Error Norm: " << error.Norm() << std::endl;
   cryptoContext->DecryptSfdk(result2, resultKey2, keyPair.publicKey, &psmResult);
   std::cout << "  PSM Result for second set: " << psmResult << std::endl;
 
@@ -133,6 +135,7 @@ void otk_simple_integers(CryptoContextSFDK<DCRTPoly> cryptoContext, LPKeyTupple<
   // First plaintext vector is encoded
   std::vector<int64_t> vectorOfInts1 = {1, 0, 3, 1, 0, 1, 2, 1};
   Plaintext plaintext1 = cryptoContext->MakePackedPlaintext(vectorOfInts1);
+
   // Second plaintext vector is encoded
   std::vector<int64_t> vectorOfInts2 = {2, 1, 3, 2, 2, 1, 3, 1};
   Plaintext plaintext2 = cryptoContext->MakePackedPlaintext(vectorOfInts2);
@@ -140,7 +143,8 @@ void otk_simple_integers(CryptoContextSFDK<DCRTPoly> cryptoContext, LPKeyTupple<
   // The encoded vectors are encrypted
   auto ciphertext1 = cryptoContext->Encrypt(keyPair.publicKey, plaintext1);
   auto ciphertext2 = cryptoContext->Encrypt(keyPair.publicKey, plaintext2);
-
+  auto ciphertext1a = cryptoContext->Encrypt(keyPair.publicKey, plaintext1);
+  auto ciphertext2a = cryptoContext->Encrypt(keyPair.publicKey, plaintext2);
   // Sample Program: Step 4: Evaluation
 
   // Homomorphic additions
@@ -148,6 +152,13 @@ void otk_simple_integers(CryptoContextSFDK<DCRTPoly> cryptoContext, LPKeyTupple<
   
   // Homomorphic multiplications
   auto ciphertextMul12 = cryptoContext->EvalMult(ciphertext1, ciphertext2);
+  auto ciphertextMul12a = cryptoContext->EvalMult(ciphertext1a, ciphertext2a);
+  auto ciphertextSubMul = cryptoContext->EvalSub(ciphertextMul12, ciphertextMul12a);
+  usint scale;
+  auto ciphertextSponge = cryptoContext->GetZeroSpongeEncryption(keyPair.secretKey, keyPair.publicKey, ciphertextSubMul, scale);
+  auto ciphertextSpongeScaled = cryptoContext->ScaleByBits(ciphertextSponge, scale);
+  auto ciphertextSubMulReduced = cryptoContext->EvalAdd(ciphertextSubMul,ciphertextSpongeScaled);
+  //
 
 
   // Homomorphic rotations
@@ -160,25 +171,59 @@ void otk_simple_integers(CryptoContextSFDK<DCRTPoly> cryptoContext, LPKeyTupple<
   cryptoContext->Decrypt(keyPair.secretKey, ciphertextAdd12,
                          &plaintextAdd12);
 
+  auto np = plaintextAdd12->GetPackedValue();
+  Plaintext plaintext2Add12 = cryptoContext->MakePackedPlaintext(np);  
+  // Get error for decryption of addition
+  auto error = cryptoContext->GetDecryptionError(keyPair.secretKey, ciphertextAdd12);
+  std::cout << "Addition Decription Error Norm: " << error.Norm() << std::endl;
+
   // Decrypt the result of multiplications
   Plaintext plaintextMult12;
   cryptoContext->Decrypt(keyPair.secretKey, ciphertextMul12,
                          &plaintextMult12);
+  error = cryptoContext->GetDecryptionError(keyPair.secretKey, ciphertextMul12);
+  std::cout << "Multiplication Decription Error Norm: " << error.Norm() << std::endl;
 
 
-  // Decrypt the result of rotations
-   Plaintext plaintextRot1;
-  cryptoContext->Decrypt(keyPair.secretKey, ciphertextRot1, &plaintextRot1);
+  // Decrypt the result of sub
+  Plaintext plaintextSubMult;
+  cryptoContext->Decrypt(keyPair.secretKey, ciphertextSubMul,
+                         &plaintextSubMult);
+  error = cryptoContext->GetDecryptionError(keyPair.secretKey, ciphertextSubMul);
+  std::cout << "  Sutraction of Mult: " << plaintextSubMult << std::endl;
+  std::cout << "Sutraction Decription Error Norm: " << error.Norm() << std::endl;
 
-  plaintextRot1->SetLength(vectorOfInts1.size());
 
+  // Decrypt the Sponge
+  Plaintext plaintextSponge;
+  cryptoContext->Decrypt(keyPair.secretKey, ciphertextSponge,
+                         &plaintextSponge);
+  error = cryptoContext->GetDecryptionError(keyPair.secretKey, ciphertextSponge);
+  std::cout << "  Sponge of Sutraction of Mult: " << plaintextSponge << std::endl;
+  std::cout << "Sponge Error Norm: " << error.Norm() << std::endl;
+
+// Decrypt the SpongeScaled
+  Plaintext plaintextSpongeScaled;
+  cryptoContext->Decrypt(keyPair.secretKey, ciphertextSpongeScaled,
+                         &plaintextSpongeScaled);
+  error = cryptoContext->GetDecryptionError(keyPair.secretKey, ciphertextSpongeScaled);
+  std::cout << "  Sponge Scaled of Sutraction of Mult: " << plaintextSpongeScaled << std::endl;
+  std::cout << "Sponge Scaled Error Norm: " << error.Norm() << std::endl;
+
+// Decrypt the SubMulReduced
+  Plaintext plaintextSubMulReduced;
+  cryptoContext->Decrypt(keyPair.secretKey, ciphertextSubMulReduced,
+                         &plaintextSubMulReduced);
+  error = cryptoContext->GetDecryptionError(keyPair.secretKey, ciphertextSubMulReduced);
+  std::cout << "  SubMulReduced of Sutraction of Mult: " << plaintextSubMulReduced << std::endl;
+  std::cout << "SubMulReduced Error Norm: " << error.Norm() << std::endl;
 
   // Sample Program: Step 5: OTK Decryption
  
   // OTK Decrypt of fresh encryption
-  auto cipherKey = cryptoContext->GenDecKeyFor(ciphertext1,  keyPair.cipherKeyGen, keyPair.publicKey);
+  auto cipherKey = cryptoContext->GenDecKeyFor(ciphertextSubMulReduced,  keyPair.cipherKeyGen, keyPair.publicKey);
   Plaintext plaintextSFDKResult;
-  cryptoContext->DecryptSfdk(ciphertext1, cipherKey, keyPair.publicKey, &plaintextSFDKResult);
+  cryptoContext->DecryptSfdk(ciphertextSubMulReduced, cipherKey, keyPair.publicKey, &plaintextSFDKResult);
 
   // OTK Decrypt of Addition
   cipherKey = cryptoContext->GenDecKeyFor(ciphertextAdd12,  keyPair.cipherKeyGen, keyPair.publicKey);
@@ -188,7 +233,7 @@ void otk_simple_integers(CryptoContextSFDK<DCRTPoly> cryptoContext, LPKeyTupple<
   // OTK Decrypt of Multiplication
   cipherKey = cryptoContext->GenDecKeyFor(ciphertextMul12,  keyPair.cipherKeyGen, keyPair.publicKey);
   Plaintext plaintextMulSFDKResult;
-  cryptoContext->DecryptSfdk(ciphertextAdd12, cipherKey, keyPair.publicKey, &plaintextMulSFDKResult);
+  cryptoContext->DecryptSfdk(ciphertextMul12, cipherKey, keyPair.publicKey, &plaintextMulSFDKResult);
 
   // OTK Decrypt of Rotation
   cipherKey = cryptoContext->GenDecKeyFor(ciphertextRot1,  keyPair.cipherKeyGen, keyPair.publicKey);
@@ -204,7 +249,7 @@ void otk_simple_integers(CryptoContextSFDK<DCRTPoly> cryptoContext, LPKeyTupple<
   std::cout << "\n  Results of homomorphic computations" << std::endl;
   std::cout << "  #1 + #2: " << plaintextAdd12 << std::endl;
   std::cout << "  #1 * #2: " << plaintextMult12 << std::endl;
-  std::cout << "  Left rotation of #1 by 1: " << plaintextRot1 << std::endl;
+  //std::cout << "  Left rotation of #1 by 1: " << plaintextRot1 << std::endl;
 
   std::cout << "\n  Results with OTK decryption" << std::endl;
   std::cout << "  Decryption of #1: " << plaintextSFDKResult << std::endl;
@@ -226,8 +271,8 @@ int main() {
   cryptoContext->EvalMultKeyGen(keyPair.secretKey);
   std::cout << " Done" << std::endl;
   printContext(cryptoContext);
-  std::cout << "PSM Test ..." << std::endl ;
-  PSM_Test(cryptoContext, keyPair);
+  //std::cout << "PSM Test ..." << std::endl ;
+  //PSM_Test(cryptoContext, keyPair);
   std::cout << "OTK Test ..." << std::endl ;
   otk_simple_integers(cryptoContext, keyPair);
 

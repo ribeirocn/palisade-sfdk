@@ -41,8 +41,8 @@ class SdfkUtils  {
         if(a[0].size() != b.size()) {
             PALISADE_THROW(config_error,"Vectors are not of the same size");
         }
-        for(usint i=1; i<a[0].size(); i++) {
-            result += a[0][i]*b[i][0];
+        for(usint i=1; i<a.size(); i++) {
+            result += a[i][0]*b[0][i];
         }
     } else {
         PALISADE_THROW(config_error,"First or Second Element is not a vector");

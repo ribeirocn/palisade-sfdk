@@ -53,6 +53,23 @@ class LPPublicKeyEncryptionSchemeSFDK
     PALISADE_THROW(not_implemented_error,"Not Implemented");
   }
 
+  virtual Ciphertext<Element> GetZeroSpongeEncryption(
+		const LPPrivateKey<Element> privateKey, 
+		const LPPublicKey<Element> publicKey,
+		Ciphertext<Element> ciphertext,
+		usint &scale,
+		bool isNotZero=false) {
+      PALISADE_THROW(not_implemented_error,"Not Implemented");
+  }
+
+  virtual Ciphertext<Element> ScaleByBits(ConstCiphertext<Element> ciphertext, usint bits) {
+    PALISADE_THROW(not_implemented_error,"Not Implemented");
+  }
+
+  virtual Element GetDecryptionError(const LPPrivateKey<Element> privateKey, Ciphertext<Element> &ciphertext, Plaintext plaintext = NULL) {
+    PALISADE_THROW(not_implemented_error,"Not Implemented");
+  }
+
 };
 
 template <typename Element>
@@ -97,6 +114,27 @@ public:
   Ciphertext<Element> PrivateSetMembership(Ciphertext<Element> &ciphertext, uint start, uint size, LPPrivateKey<Element> secretKey) {
     auto context = CryptoContextFactory<Element>::GetContextForPointer(this);
     auto r = GetMyEncryptionAlgorithm()->PrivateSetMembership(ciphertext, start, size, context, secretKey);
+    return r;  
+  }
+
+
+  Ciphertext<Element> GetZeroSpongeEncryption(const LPPrivateKey<Element> privateKey, 
+		  const LPPublicKey<Element> publicKey,
+		  Ciphertext<Element> ciphertext,
+		  usint &scale,
+		  bool isNotZero=false) {
+    auto r = GetMyEncryptionAlgorithm()->GetZeroSpongeEncryption(privateKey, publicKey, ciphertext, scale, isNotZero);
+    return r;  
+  }
+
+  Ciphertext<Element> ScaleByBits(ConstCiphertext<Element> ciphertext, usint bits) {
+    auto r = GetMyEncryptionAlgorithm()->ScaleByBits(ciphertext, bits);
+    return r;     
+  }
+
+  Element GetDecryptionError(const LPPrivateKey<Element> privateKey, Ciphertext<Element> &ciphertext, Plaintext plaintext = NULL) {
+    auto context = CryptoContextFactory<Element>::GetContextForPointer(this);
+    auto r = GetMyEncryptionAlgorithm()->GetDecryptionError(privateKey, ciphertext, plaintext);
     return r;  
   }
 

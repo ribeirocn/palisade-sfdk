@@ -129,9 +129,21 @@ class LPAlgorithmSFDKBFVrns {
 
   void PreparePSM(LPPrivateKey<Element> secretKey, uint maxsize, CryptoContext<Element> cryptoContext);
 
+  Ciphertext<Element> GetZeroSpongeEncryption(
+		const LPPrivateKey<Element> privateKey, 
+		const LPPublicKey<Element> publicKey,
+		Ciphertext<Element> ciphertext,
+		usint &scale,
+		bool isNotZero=false);
+
+  Ciphertext<Element> ScaleByBits(ConstCiphertext<Element> ciphertext, usint bits);
+
+  Element GetDecryptionError(const LPPrivateKey<Element> privateKey, Ciphertext<Element> &ciphertext, Plaintext plaintext);
+
+
 
  protected:
-  DecryptResult Decode(Element &b,  NativePoly *plaintext, shared_ptr<LPCryptoParametersBFVrns<Element>>  cryptoParamsBFVrns );
+  DecryptResult ScaleAndRound(Element &b,  NativePoly *plaintext, shared_ptr<LPCryptoParametersBFVrns<Element>>  cryptoParamsBFVrns );
  private:
   std::vector<char> seed;
 };
@@ -206,6 +218,32 @@ class LPPublicKeyEncryptionSchemeBFVrnssfdk
       return;
     }
     PALISADE_THROW(config_error, "SFDK Decrypt operation has not been enabled");
+  }
+
+  Ciphertext<Element> GetZeroSpongeEncryption(
+		const LPPrivateKey<Element> privateKey, 
+		const LPPublicKey<Element> publicKey,
+		Ciphertext<Element> ciphertext,
+		usint &scale,
+		bool isNotZero=false) override {
+    if (m_algorithmSFDK) {
+      return m_algorithmSFDK->GetZeroSpongeEncryption(privateKey, publicKey, ciphertext, scale, isNotZero);
+    }
+    PALISADE_THROW(config_error, "SFDK GetZeroSponge operation has not been enabled");
+  }
+
+  Ciphertext<Element> ScaleByBits(ConstCiphertext<Element> ciphertext, usint bits) override {
+    if (m_algorithmSFDK) {
+      return m_algorithmSFDK->ScaleByBits(ciphertext, bits);
+    }
+    PALISADE_THROW(config_error, "SFDK ScaleByBits operation has not been enabled");
+  }
+
+  Element GetDecryptionError(const LPPrivateKey<Element> privateKey, Ciphertext<Element> &ciphertext, Plaintext plaintext = NULL) override {
+    if (m_algorithmSFDK) {
+      return m_algorithmSFDK->GetDecryptionError(privateKey, ciphertext, plaintext);
+    }
+    PALISADE_THROW(config_error, "SFDK Decrypt Error operation has not been enabled");
   }
 
   template <class Archive>

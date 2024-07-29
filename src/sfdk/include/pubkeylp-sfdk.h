@@ -173,6 +173,8 @@ class LPLargePublicKeyImpl : public LPPublicKeyImpl<Element> {
   std::string SerializedObjectName() const { return "PublicSFDKKey"; }
   static uint32_t SerializedVersion() { return 1; }
 
+  Matrix<Element> m_error;
+  Element m_s;
  private:
   std::vector<Matrix<Element>> m_xh;
 };

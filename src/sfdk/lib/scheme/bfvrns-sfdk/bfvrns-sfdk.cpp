@@ -165,6 +165,8 @@ LPKeyTupple<Element> LPAlgorithmSFDKBFVrns<Element>::KeyGen(CryptoContextSFDK<El
   Matrix<Element> e(zero_alloc,1,k,gaussian_alloc);
   //Element e(dgg, elementParams, Format::COEFFICIENT,elementParams->GetK());
   e.SetFormat(Format::EVALUATION);
+	kp.publicKey->m_error = e;
+	kp.publicKey->m_s = s;
 
   Matrix<Element> b(zero_alloc,1,k);
   //Element b(elementParams, Format::EVALUATION, true, elementParams->GetK());
@@ -183,6 +185,215 @@ LPKeyTupple<Element> LPAlgorithmSFDKBFVrns<Element>::KeyGen(CryptoContextSFDK<El
   kp.cipherKeyGen->SetPrivateElement(std::make_shared<RLWETrapdoorPair<Element>>(keyPair.second));
 
   return kp;
+}
+
+template <class Element>
+Element LPAlgorithmSFDKBFVrns<Element>::GetDecryptionError(const LPPrivateKey<Element> privateKey, Ciphertext<Element> &ciphertext, Plaintext plaintext) {
+	auto cryptoParams =
+      std::static_pointer_cast<LPCryptoParametersBFVrnssfdk<Element>>(privateKey->GetCryptoParameters());
+	
+  const std::vector<Element> &c = ciphertext->GetElements();
+  const Element &s = privateKey->GetPrivateElement();
+  Element sPower = s;
+
+  Element b = c[0];
+  b.SetFormat(Format::EVALUATION);
+
+  Element cTemp;
+  for (size_t i = 1; i <= ciphertext->GetDepth(); i++) {
+    cTemp = c[i];
+    cTemp.SetFormat(Format::EVALUATION);
+
+    b += sPower * cTemp;
+    sPower *= s;
+  }
+
+	Element ptxt;
+  // Converts back to coefficient representation
+  //b.SetFormat(Format::COEFFICIENT);
+	if(plaintext == NULL) {
+		b.SwitchFormat();
+
+  	auto vp = std::make_shared<typename NativePoly::Params>(
+      ciphertext->GetElements()[0].GetParams()->GetCyclotomicOrder(), privateKey->GetCryptoContext()->GetEncodingParams()->GetPlaintextModulus(), 1);
+  	Plaintext decrypted = PlaintextFactory::MakePlaintext(ciphertext->GetEncodingType(), vp, privateKey->GetCryptoContext()->GetEncodingParams());
+
+  	DecryptResult result = ScaleAndRound(b, &decrypted->GetElement<NativePoly>(),
+      std::static_pointer_cast<LPCryptoParametersBFVrns<Element>>(privateKey->GetCryptoParameters()));
+
+  	decrypted->Decode();
+  	Plaintext xplaintext = PlaintextFactory::MakePlaintext(ciphertext->GetEncodingType(), privateKey->GetCryptoContext()->GetElementParams(), privateKey->GetCryptoContext()->GetEncodingParams(),decrypted->GetPackedValue());
+  	ptxt = xplaintext->GetElement<Element>();
+		b.SwitchFormat();
+	} else {
+  	ptxt = plaintext->GetElement<Element>();
+	}
+  ptxt.SetFormat(Format::EVALUATION);
+
+  const std::vector<NativeInteger> &delta = cryptoParams->GetDelta();
+
+  auto error = b - ptxt.Times(delta);
+  error.SetFormat(Format::COEFFICIENT);
+  return error;
+}
+
+template<class Element>
+Element ModLShift(const Element e, usint bits) {
+	PALISADE_THROW(not_implemented_error, "ModLShift not implemented for this Element");
+	return 0;
+}
+
+template<class Element>
+Element DivideApproxBySQRootOfNorm(const Element e, usint &bits) {
+	PALISADE_THROW(not_implemented_error, "DivideApproxBySQRootOfNorm not implemented for this Element");
+	return 0;
+}
+
+template<>
+DCRTPoly DivideApproxBySQRootOfNorm(const DCRTPoly e, usint &bits) {
+	Poly poly(e.CRTInterpolate());
+	poly.SetFormat(Format::COEFFICIENT);
+	Poly::Integer locVal;
+  Poly::Integer retVal;
+
+	auto m_params = poly.GetParams();
+  const Poly::Integer &q = m_params->GetModulus();
+  const Poly::Integer &half = m_params->GetModulus() >> 1;
+
+	auto m_values = poly.GetValues();
+  for (usint i = 0; i < m_values.GetLength(); i++) {
+    if (m_values.operator[](i) > half)
+      locVal = q - (m_values)[i];
+    else
+      locVal = m_values.operator[](i);
+
+    if (locVal > retVal) retVal = locVal;
+  }
+	bits = retVal.GetMSB()/2;
+	for (usint i = 0; i < m_values.GetLength(); i++) {
+		if (m_values[i] > half) {
+      locVal = q - (m_values)[i];
+			locVal.RShiftEq(bits);
+			m_values[i] = q - locVal;
+		} else {
+      locVal = m_values[i];
+			locVal.RShiftEq(bits);
+			m_values[i]= locVal;
+		}
+	}
+	poly.SetValues(m_values, poly.GetFormat());
+	return DCRTPoly(poly,e.GetParams());
+}
+
+
+template<>
+DCRTPoly ModLShift(DCRTPoly e, usint bits) {
+
+	BigInteger a(1);
+	a.LShiftEq(bits);
+	e.SetFormat(Format::EVALUATION);
+	return a*e;
+}
+
+
+template <class Element>
+Ciphertext<Element> LPAlgorithmSFDKBFVrns<Element>::GetZeroSpongeEncryption(
+		const LPPrivateKey<Element> privateKey, 
+		const LPPublicKey<Element> pubKey,
+		Ciphertext<Element> ciphertext,
+		usint &scale,
+		bool isNotZero) {
+	auto publicKey = std::dynamic_pointer_cast<LPLargePublicKeyImpl<Element>>(pubKey);
+  auto cryptoParams =
+      std::static_pointer_cast<LPCryptoParametersBFVrnssfdk<Element>>(privateKey->GetCryptoParameters());
+	const shared_ptr<ParmType> elementParams = cryptoParams->GetElementParams();
+	Ciphertext<Element> newCiphertext(
+      std::make_shared<CiphertextImpl<Element>>(*ciphertext));
+  
+	const std::vector<Element> &c = ciphertext->GetElements();
+  const Element &s = privateKey->GetPrivateElement();
+  Element sPower = s;
+
+  Element b = c[0];
+  b.SetFormat(Format::EVALUATION);
+
+  Element cTemp;
+  for (size_t i = 1; i <= ciphertext->GetDepth(); i++) {
+    cTemp = c[i];
+    cTemp.SetFormat(Format::EVALUATION);
+
+    b += sPower * cTemp;
+    sPower *= s;
+  }
+
+	if(isNotZero) {
+  	// To be tested
+  	// If the original ciphertext is not an encryption of zero
+  	// then we must subtract the plaintext multiplied by delta
+  	b.SwitchFormat();
+
+  	auto vp = std::make_shared<typename NativePoly::Params>(
+      ciphertext->GetElements()[0].GetParams()->GetCyclotomicOrder(), privateKey->GetCryptoContext()->GetEncodingParams()->GetPlaintextModulus(), 1);
+  	Plaintext decrypted = PlaintextFactory::MakePlaintext(ciphertext->GetEncodingType(), vp, privateKey->GetCryptoContext()->GetEncodingParams());
+
+  	DecryptResult result = ScaleAndRound(b, &decrypted->GetElement<NativePoly>(),
+      std::static_pointer_cast<LPCryptoParametersBFVrns<Element>>(privateKey->GetCryptoParameters()));
+
+  	decrypted->Decode();
+  	Plaintext xplaintext = PlaintextFactory::MakePlaintext(ciphertext->GetEncodingType(), privateKey->GetCryptoContext()->GetElementParams(), privateKey->GetCryptoContext()->GetEncodingParams(),decrypted->GetPackedValue());
+  	Element ptxt = xplaintext->GetElement<Element>();
+  	ptxt.SetFormat(Format::EVALUATION);
+
+		const std::vector<NativeInteger> &delta = cryptoParams->GetDelta();
+  	b -= ptxt.Times(delta);
+	}
+	Element error = DivideApproxBySQRootOfNorm(b,scale);
+	error.SetFormat(Format::EVALUATION);
+
+	// Create the Zero ciphertext with th especififed error
+	const Matrix<Element> &p0 = publicKey->GetLargePublicElements().at(0);
+	const Matrix<Element> &p1 = publicKey->GetLargePublicElements().at(1);
+	const DggType &dgg = cryptoParams->GetDiscreteGaussianGenerator();
+	auto zero_alloc = DCRTPoly::Allocator(elementParams, EVALUATION);
+  auto gaussian_alloc = DCRTPoly::MakeDiscreteGaussianCoefficientAllocator(
+      elementParams, Format::COEFFICIENT, dgg.GetStd());
+    //u = Matrix<Element>([&](){Element(dgg, elementParams, Format::EVALUATION);}, p0.GetData()[0].size(), 1);
+  Matrix<Element> u(zero_alloc, p0.GetData()[0].size(), 1, gaussian_alloc);
+	Element c0(elementParams);
+  Element c1(elementParams);
+  u.SetFormat(Format::EVALUATION);
+
+	Matrix<Element> base(zero_alloc,1,p0.GetData()[0].size());
+  //Element b(elementParams, Format::EVALUATION, true, elementParams->GetK());
+  base -= (p1 * s);
+
+	c1 = SdfkUtils<Element>::dotProd(p1,u);
+	c0 = SdfkUtils<Element>::dotProd(base,u);
+	c0 -= error;
+
+	newCiphertext->SetElements({std::move(c0), std::move(c1)});
+	
+	return newCiphertext;
+}
+
+
+template <class Element>
+Ciphertext<Element> LPAlgorithmSFDKBFVrns<Element>::ScaleByBits(ConstCiphertext<Element> ciphertext, usint bits) {
+  Ciphertext<Element> newCiphertext = ciphertext->CloneEmpty();
+  newCiphertext->SetDepth(ciphertext->GetDepth());
+
+  const std::vector<Element> &cipherTextElements = ciphertext->GetElements();
+
+  std::vector<Element> c(cipherTextElements.size());
+
+  for (size_t i = 0; i < cipherTextElements.size(); i++) {
+    c[i] = ModLShift(cipherTextElements[i],bits);
+		c[i].SetFormat(Format::EVALUATION);
+  }
+
+  newCiphertext->SetElements(std::move(c));
+
+  return newCiphertext;
 }
 
 template <class Element>
@@ -224,11 +435,49 @@ LPKeyCipher<Element> LPAlgorithmSFDKBFVrns<Element>::GenDecKeyFor(Ciphertext<Ele
     Matrix<Element> zHat = RLWETrapdoorUtility<Element>::GaussSamp(
       n, k-2, A, *keyGen->GetPrivateElement(), u, dgg, dggLargeSigma, base);
 
+#ifdef DEBUG
+		//// Testing Area
+		auto b = publicKey->GetLargePublicElements()[0];
+		auto e = publicKey->m_error;
+  	Element s = publicKey->m_s;
+		DCRTPoly c0 = cipherTextElements[0];
+
+		b.SetFormat(Format::EVALUATION);
+		e.SetFormat(Format::EVALUATION);
+		s.SetFormat(Format::EVALUATION);
+		A.SetFormat(Format::EVALUATION);
+		c0.SetFormat(Format::EVALUATION);
+		zHat.SetFormat(Format::EVALUATION);
+		Element et = SdfkUtils<Element>::dotProd(e,zHat);
+		Element at = SdfkUtils<Element>::dotProd(A,zHat);
+		Element bt = SdfkUtils<Element>::dotProd(b,zHat);
+	  Matrix<Element> blinha(zero_alloc,1,k);
+		blinha.SetFormat(Format::EVALUATION);
+
+  	blinha -= e;
+  	blinha -= (A * s);
+		auto btlinha = bt;
+		btlinha += et;
+		btlinha += (at * s);
+	  
+		std::cout << "P0==P0: " << (b-blinha).Norm() << std::endl;
+		std::cout << "C1==AT: " << (u-at).Norm() << std::endl;
+		std::cout << "BT-AT-ET: " << btlinha.Norm() << std::endl;
+
+		std::cout << "Ra: " << (c0+at*s).Norm() << std::endl;
+		
+		std::cout << "Rb: " << (c0+at*s+et).Norm() << std::endl;
+
+		std::cout << "Rc: " << (c0-bt).Norm() << std::endl;
+
+		//// END Of Testing
+	#endif
+	
     return std::make_shared<LPKeyCipherImpl<Element>>(std::make_shared<Matrix<Element>>(zHat), publicKey);
   }
 
 template <class Element>
-DecryptResult LPAlgorithmSFDKBFVrns<Element>::Decode(Element &b,  NativePoly *plaintext, shared_ptr<LPCryptoParametersBFVrns<Element>>  cryptoParamsBFVrns) {
+DecryptResult LPAlgorithmSFDKBFVrns<Element>::ScaleAndRound(Element &b,  NativePoly *plaintext, shared_ptr<LPCryptoParametersBFVrns<Element>>  cryptoParamsBFVrns) {
 
 
   const shared_ptr<typename Element::Params> elementParams =
@@ -263,6 +512,7 @@ DecryptResult LPAlgorithmSFDKBFVrns<Element>::Decode(Element &b,  NativePoly *pl
   return DecryptResult(plaintext->GetLength());
 }
 
+
 template <class Element>
 DecryptResult LPAlgorithmSFDKBFVrns<Element>::DecryptSfdk(Ciphertext<Element> &ciphertext, LPKeyCipher<Element> decKey, LPXPublicKey<Element> pubKey, Plaintext *plaintext) {
 
@@ -276,8 +526,9 @@ DecryptResult LPAlgorithmSFDKBFVrns<Element>::DecryptSfdk(Ciphertext<Element> &c
   r.SetFormat(Format::EVALUATION);
   b.SetFormat(Format::EVALUATION);
   decKey->getPrivateElement()->SetFormat(Format::EVALUATION);
-  r -= SdfkUtils<Element>::dotProd(b,*decKey->getPrivateElement());
-
+	auto zHat = *decKey->getPrivateElement();
+	auto bt = SdfkUtils<Element>::dotProd(b,zHat);
+  r -= bt;
 
   // this is the resulting vector of coefficients;
 
@@ -285,14 +536,27 @@ DecryptResult LPAlgorithmSFDKBFVrns<Element>::DecryptSfdk(Ciphertext<Element> &c
       ciphertext->GetElements()[0].GetParams()->GetCyclotomicOrder(), decKey->GetCryptoContext()->GetEncodingParams()->GetPlaintextModulus(), 1);
   Plaintext decrypted = PlaintextFactory::MakePlaintext(ciphertext->GetEncodingType(), vp, decKey->GetCryptoContext()->GetEncodingParams());
 
-  DecryptResult result = Decode(r, &decrypted->GetElement<NativePoly>(),
+  DecryptResult result = ScaleAndRound(r, &decrypted->GetElement<NativePoly>(),
       std::static_pointer_cast<LPCryptoParametersBFVrns<Element>>(decKey->GetCryptoParameters()));
-
-  // std::cout << "Decryption time (internal): " << TOC_US(t_total) << " us" <<
-  // std::endl;
-  if (result.isValid == false) return result;
   decrypted->Decode();
+
+#ifdef DEBUG
+  Plaintext xplaintext = PlaintextFactory::MakePlaintext(ciphertext->GetEncodingType(), decKey->GetCryptoContext()->GetElementParams(), decKey->GetCryptoContext()->GetEncodingParams(),decrypted->GetPackedValue());
+  Element ptxt = xplaintext->GetElement<Element>();
+  ptxt.SetFormat(Format::EVALUATION);
+  auto cryptoParams =
+      std::static_pointer_cast<LPCryptoParametersBFVrnssfdk<Element>>(pubKey->GetCryptoParameters());
+  const std::vector<NativeInteger> &delta = cryptoParams->GetDelta();
+  auto error = r - ptxt.Times(delta);
+  error.SetFormat(Format::COEFFICIENT);
+  std::cout << "Norm of OTK Decrypt: " << error.Norm() << std::endl;
+#endif
+
+  if (result.isValid == false) return result;
+
   *plaintext = std::move(decrypted);
+ 
+  
 
   return result;
 }
